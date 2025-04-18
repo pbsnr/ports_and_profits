@@ -68,6 +68,8 @@
         let boatGrid = JSON.parse('{{ boat_grid|tojson|safe }}');  // Pass the boat grid data from Flask to JavaScript
         let boatsList = JSON.parse('{{ boats_list|tojson|safe }}');  // Pass the boats list from Flask to JavaScript
 
+        console.log('portsData:', portsData);
+
         const canvas = document.getElementById("mapCanvas");
         const ctx = canvas.getContext("2d");
         const portInfoDiv = document.getElementById("port-info");
@@ -130,20 +132,93 @@
 
                 // Modify Route
                 const modifyCell = document.createElement("td");
-                const input = document.createElement("input");
-                input.type = "text";
-                input.placeholder = "New Route (comma-separated)";
+
+                // Start Port Input
+                const startInput = document.createElement("input");
+                startInput.type = "text";
+                startInput.placeholder = "Start Port";
+                startInput.classList.add("autocomplete");
+                startInput.value = boat.route[0] || ""; // Pre-fill with the current start port
+                modifyCell.appendChild(startInput);
+
+                // End Port Input
+                const endInput = document.createElement("input");
+                endInput.type = "text";
+                endInput.placeholder = "End Port";
+                endInput.classList.add("autocomplete");
+                endInput.value = boat.route[boat.route.length - 1] || ""; // Pre-fill with the current end port
+                modifyCell.appendChild(endInput);
+
+                // Update Button
                 const button = document.createElement("button");
                 button.textContent = "Update";
                 button.onclick = () => {
-                    const newRoute = input.value.split(",").map(r => r.trim());
+                    const newRoute = [startInput.value, endInput.value];
                     socket.emit("update_route", { boatIndex: index, newRoute });
                 };
-                modifyCell.appendChild(input);
                 modifyCell.appendChild(button);
-                row.appendChild(modifyCell);
 
+                row.appendChild(modifyCell);
                 boatsTable.appendChild(row);
+            });
+
+            // Initialize autocomplete for all inputs
+            initializeAutocomplete();
+        }
+
+        // Function to initialize autocomplete
+        function initializeAutocomplete() {
+            const autocompleteInputs = document.querySelectorAll(".autocomplete");
+
+            autocompleteInputs.forEach(input => {
+                input.addEventListener("input", function () {
+                    const suggestions = portsData
+                        .map(port => port.name)
+                        .filter(name => name.toLowerCase().includes(this.value.toLowerCase()));
+
+                    // Remove any existing suggestion list
+                    let suggestionList = this.nextElementSibling;
+                    if (suggestionList && suggestionList.classList.contains("suggestions")) {
+                        suggestionList.remove();
+                    }
+
+                    // Create a new suggestion list
+                    suggestionList = document.createElement("ul");
+                    suggestionList.classList.add("suggestions");
+                    suggestionList.style.position = "absolute";
+                    suggestionList.style.backgroundColor = "white";
+                    suggestionList.style.border = "1px solid #ccc";
+                    suggestionList.style.listStyle = "none";
+                    suggestionList.style.padding = "0";
+                    suggestionList.style.margin = "0";
+                    suggestionList.style.zIndex = "1000";
+
+                    suggestions.forEach(suggestion => {
+                        const item = document.createElement("li");
+                        item.textContent = suggestion;
+                        item.style.padding = "5px";
+                        item.style.cursor = "pointer";
+
+                        item.addEventListener("click", () => {
+                            input.value = suggestion;
+                            suggestionList.remove();
+                        });
+
+                        suggestionList.appendChild(item);
+                    });
+
+                    this.parentNode.appendChild(suggestionList);
+                });
+
+                // Remove suggestions when the input loses focus
+                input.addEventListener("blur", function () {
+                    setTimeout(() => {
+                        const suggestionList = this.nextElementSibling;
+                        if (suggestionList && suggestionList.classList.contains("suggestions")) {
+                            suggestionList.remove();
+                        }
+                    }, 200);
+                });
             });
         }
 

@@ -55,8 +55,9 @@ def send_updated_map():
 @socketio.on("update_route")
 def update_route(data):
     global boats_list
+
     boat_index = data.get("boatIndex")
-    new_route = data.get("newRoute")
+    new_route = data.get("newRoute")  # This will now be a list of two port names (start and end)
 
     if 0 <= boat_index < len(boats_list):
         boats_list[boat_index]["route"] = new_route
