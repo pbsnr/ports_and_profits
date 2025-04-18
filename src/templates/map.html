@@ -96,13 +96,12 @@
             const gridX = Math.floor(mouseX / cellSize);
             const gridY = Math.floor(mouseY / cellSize);
 
-            console.log(gridY, gridX);
 
             // Check if the hovered cell is a port
             if (gridY >= 0 && gridY < gridData.length && gridX >= 0 && gridX < gridData[0].length) {
                 if (gridData[gridY][gridX] === 2) {
                     // Find the corresponding port information
-                    const port = portsData.find(p => p[1][1] === gridX && p[1][0] === gridY);
+                    const port = portsData.find(p => p['coordinates'][1] === gridX && p['coordinates'][0] === gridY);
                     if (port) {
                         portInfoDiv.textContent = `Port Info: ${JSON.stringify(port)}`;
                     }
