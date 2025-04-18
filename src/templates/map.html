@@ -27,65 +27,129 @@
     <canvas id="mapCanvas"></canvas>
     <div id="port-info">Hover over a port to see its information.</div>
 
+    <!-- Pause and Play Buttons -->
+    <div style="margin: 20px;">
+        <button id="pauseButton">Pause</button>
+        <button id="playButton">Play</button>
+    </div>
+
+    <!-- Table for boat information -->
+    <h2>Boats Information</h2>
+    <table id="boatsTable" border="1" style="margin: 20px auto; width: 80%; text-align: center;">
+        <thead>
+            <tr>
+                <th>Boat Name</th>
+                <th>Current Coordinates</th>
+                <th>Route</th>
+                <th>Modify Route</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Rows will be dynamically populated -->
+        </tbody>
+    </table>
+
+    <!-- Form for adding a new boat -->
+    <h2>Add a New Boat</h2>
+    <form id="addBoatForm" style="margin: 20px auto; width: 80%; text-align: center;">
+        <label for="boatName">Boat Name:</label>
+        <input type="text" id="boatName" placeholder="Enter boat name" required>
+        <label for="boatCoordinates">Coordinates:</label>
+        <input type="text" id="boatCoordinates" placeholder="e.g., 5,10" required>
+        <label for="boatRoute">Route:</label>
+        <input type="text" id="boatRoute" placeholder="Comma-separated ports" required>
+        <button type="submit">Add Boat</button>
+    </form>
+
     <script>
         const socket = io();  // Initialize WebSocket connection
         let gridData = JSON.parse('{{ grid|tojson|safe }}');  // Pass the grid data from Flask to JavaScript
         let portsData = JSON.parse('{{ ports|tojson|safe }}');  // Pass the ports data from Flask to JavaScript
         let boatGrid = JSON.parse('{{ boat_grid|tojson|safe }}');  // Pass the boat grid data from Flask to JavaScript
+        let boatsList = JSON.parse('{{ boats_list|tojson|safe }}');  // Pass the boats list from Flask to JavaScript
+
         const canvas = document.getElementById("mapCanvas");
         const ctx = canvas.getContext("2d");
         const portInfoDiv = document.getElementById("port-info");
+        const boatsTable = document.getElementById("boatsTable").querySelector("tbody");
 
-
-        let selectedBoat = null; // Track the selected boat
-
-        // Set canvas size based on grid dimensions
         const cellSize = 10; // Size of each cell in pixels
         canvas.width = gridData[0].length * cellSize;
         canvas.height = gridData.length * cellSize;
 
         // Function to draw the map
         function drawMap() {
-            // Clear the canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Draw the grid
             for (let y = 0; y < gridData.length; y++) {
                 for (let x = 0; x < gridData[y].length; x++) {
-                    if (gridData[y][x] === 1) {
-                        ctx.fillStyle = "green"; // Green for islands
-                    } else if (gridData[y][x] === 2) {
-                        ctx.fillStyle = "red"; // Red for ports
-                    } else if (gridData[y][x] === -1) {
-                        ctx.fillStyle = "blue"; // Blue for ocean
-                    } else {
-                        ctx.fillStyle = "blue"; // Blue for water
-                    }
+                    if (gridData[y][x] === 1) ctx.fillStyle = "green"; // Islands
+                    else if (gridData[y][x] === 2) ctx.fillStyle = "red"; // Ports
+                    else ctx.fillStyle = "blue"; // Ocean
                     ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
                 }
             }
 
             // Draw boats
-            for (let y = 0; y < boatGrid.length; y++) {
-                for (let x = 0; x < boatGrid[y].length; x++) {
-                    if (boatGrid[y][x] === 1) { // Assuming 1 represents a boat
-                        ctx.fillStyle = "yellow"; // Yellow for boats
-                        ctx.beginPath();
-                        ctx.arc(
-                            x * cellSize + cellSize / 2, // Center X
-                            y * cellSize + cellSize / 2, // Center Y
-                            cellSize / 3, // Radius
-                            0,
-                            2 * Math.PI
-                        );
-                        ctx.fill();
-                    }
-                }
+            for (let boat of boatsList) {
+                const [y, x] = boat.coordinates;
+                ctx.fillStyle = "yellow";
+                ctx.beginPath();
+                ctx.arc(
+                    x * cellSize + cellSize / 2,
+                    y * cellSize + cellSize / 2,
+                    cellSize / 3,
+                    0,
+                    2 * Math.PI
+                );
+                ctx.fill();
             }
         }
 
-        // Initial draw
+        // Function to populate the boats table
+        function populateBoatsTable() {
+            boatsTable.innerHTML = ""; // Clear existing rows
+
+            boatsList.forEach((boat, index) => {
+                const row = document.createElement("tr");
+
+                // Boat Name
+                const nameCell = document.createElement("td");
+                nameCell.textContent = boat.name;
+                row.appendChild(nameCell);
+
+                // Current Coordinates
+                const coordCell = document.createElement("td");
+                coordCell.textContent = `(${boat.coordinates[0]}, ${boat.coordinates[1]})`;
+                row.appendChild(coordCell);
+
+                // Current Route
+                const routeCell = document.createElement("td");
+                routeCell.textContent = boat.route.join(" -> ");
+                row.appendChild(routeCell);
+
+                // Modify Route
+                const modifyCell = document.createElement("td");
+                const input = document.createElement("input");
+                input.type = "text";
+                input.placeholder = "New Route (comma-separated)";
+                const button = document.createElement("button");
+                button.textContent = "Update";
+                button.onclick = () => {
+                    const newRoute = input.value.split(",").map(r => r.trim());
+                    socket.emit("update_route", { boatIndex: index, newRoute });
+                };
+                modifyCell.appendChild(input);
+                modifyCell.appendChild(button);
+                row.appendChild(modifyCell);
+
+                boatsTable.appendChild(row);
+            });
+        }
+
+        // Initial draw and table population
         drawMap();
+        populateBoatsTable();
 
         // Add hover functionality
         canvas.addEventListener("mousemove", (event) => {
@@ -116,18 +180,45 @@
             gridData = data.grid;
             portsData = data.ports;
             boatGrid = data.boat_grid;
+            boatsList = data.boats_list;
 
-            // Set canvas size if not already set
-            if (canvas.width === 0 || canvas.height === 0) {
-                setCanvasSize(gridData);
-            }
-
-            // Redraw the map
             drawMap();
+            populateBoatsTable();
         });
 
         // Request an initial update
         socket.emit("request_update");
+
+        // Pause button functionality
+        document.getElementById("pauseButton").addEventListener("click", () => {
+            socket.emit("pause_loop");
+        });
+
+        // Play button functionality
+        document.getElementById("playButton").addEventListener("click", () => {
+            socket.emit("play_loop");
+        });
+
+        // Handle adding a new boat
+        document.getElementById("addBoatForm").addEventListener("submit", (event) => {
+            event.preventDefault(); // Prevent form submission
+
+            const boatName = document.getElementById("boatName").value.trim();
+            const boatCoordinates = document.getElementById("boatCoordinates").value.trim();
+            const boatRoute = document.getElementById("boatRoute").value.trim();
+
+            // Parse coordinates and route
+            const coordinates = boatCoordinates.split(",").map(Number);
+            const route = boatRoute.split(",").map(r => r.trim());
+
+            // Emit the new boat data to the server
+            socket.emit("add_boat", { name: boatName, coordinates, route });
+
+            // Clear the form
+            document.getElementById("boatName").value = "";
+            document.getElementById("boatCoordinates").value = "";
+            document.getElementById("boatRoute").value = "";
+        });
     </script>
 </body>
 </html>
