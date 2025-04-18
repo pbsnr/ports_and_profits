@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generated Map</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        canvas {
+            border: 1px solid #000;
+        }
+        #port-info {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #333;
+        }
+    </style>
+    <!-- Include the Socket.IO client library -->
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+</head>
+<body>
+    <h1>Generated Map</h1>
+    <canvas id="mapCanvas"></canvas>
+    <div id="port-info">Hover over a port to see its information.</div>
+
+    <script>
+        const socket = io();  // Initialize WebSocket connection
+        let gridData = JSON.parse('{{ grid|tojson|safe }}');  // Pass the grid data from Flask to JavaScript
+        let portsData = JSON.parse('{{ ports|tojson|safe }}');  // Pass the ports data from Flask to JavaScript
+        let boatGrid = JSON.parse('{{ boat_grid|tojson|safe }}');  // Pass the boat grid data from Flask to JavaScript
+        const canvas = document.getElementById("mapCanvas");
+        const ctx = canvas.getContext("2d");
+        const portInfoDiv = document.getElementById("port-info");
+
+
+        let selectedBoat = null; // Track the selected boat
+
+        // Set canvas size based on grid dimensions
+        const cellSize = 10; // Size of each cell in pixels
+        canvas.width = gridData[0].length * cellSize;
+        canvas.height = gridData.length * cellSize;
+
+        // Function to draw the map
+        function drawMap() {
+            // Clear the canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw the grid
+            for (let y = 0; y < gridData.length; y++) {
+                for (let x = 0; x < gridData[y].length; x++) {
+                    if (gridData[y][x] === 1) {
+                        ctx.fillStyle = "green"; // Green for islands
+                    } else if (gridData[y][x] === 2) {
+                        ctx.fillStyle = "red"; // Red for ports
+                    } else if (gridData[y][x] === -1) {
+                        ctx.fillStyle = "blue"; // Blue for ocean
+                    } else {
+                        ctx.fillStyle = "blue"; // Blue for water
+                    }
+                    ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                }
+            }
+
+            // Draw boats
+            for (let y = 0; y < boatGrid.length; y++) {
+                for (let x = 0; x < boatGrid[y].length; x++) {
+                    if (boatGrid[y][x] === 1) { // Assuming 1 represents a boat
+                        ctx.fillStyle = "yellow"; // Yellow for boats
+                        ctx.beginPath();
+                        ctx.arc(
+                            x * cellSize + cellSize / 2, // Center X
+                            y * cellSize + cellSize / 2, // Center Y
+                            cellSize / 3, // Radius
+                            0,
+                            2 * Math.PI
+                        );
+                        ctx.fill();
+                    }
+                }
+            }
+        }
+
+        // Initial draw
+        drawMap();
+
+        // Add hover functionality
+        canvas.addEventListener("mousemove", (event) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = event.clientX - rect.left;
+            const mouseY = event.clientY - rect.top;
+
+            const gridX = Math.floor(mouseX / cellSize);
+            const gridY = Math.floor(mouseY / cellSize);
+
+            console.log(gridY, gridX);
+
+            // Check if the hovered cell is a port
+            if (gridY >= 0 && gridY < gridData.length && gridX >= 0 && gridX < gridData[0].length) {
+                if (gridData[gridY][gridX] === 2) {
+                    // Find the corresponding port information
+                    const port = portsData.find(p => p[1][1] === gridX && p[1][0] === gridY);
+                    if (port) {
+                        portInfoDiv.textContent = `Port Info: ${JSON.stringify(port)}`;
+                    }
+                } else {
+                    portInfoDiv.textContent = "Hover over a port to see its information.";
+                }
+            }
+        });
+
+        // Listen for map updates from the server
+        socket.on("update_map", (data) => {
+            gridData = data.grid;
+            portsData = data.ports;
+            boatGrid = data.boat_grid;
+
+            // Set canvas size if not already set
+            if (canvas.width === 0 || canvas.height === 0) {
+                setCanvasSize(gridData);
+            }
+
+            // Redraw the map
+            drawMap();
+        });
+
+        // Request an initial update
+        socket.emit("request_update");
+    </script>
+</body>
+</html>
