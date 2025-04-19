@@ -33,6 +33,11 @@
         <button id="playButton">Play</button>
     </div>
 
+    <!-- Time Display -->
+    <div id="timeDisplay" style="margin: 20px; font-size: 18px; font-weight: bold;">
+        Current Time: 00:00
+    </div>
+
     <!-- Table for boat information -->
     <h2>Boats Information</h2>
     <table id="boatsTable" border="1" style="margin: 20px auto; width: 80%; text-align: center;">
@@ -42,6 +47,24 @@
                 <th>Current Coordinates</th>
                 <th>Route</th>
                 <th>Modify Route</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Rows will be dynamically populated -->
+        </tbody>
+    </table>
+
+    <!-- Table for port information -->
+    <h2>Ports Information</h2>
+    <table id="portsTable" border="1" style="margin: 20px auto; width: 80%; text-align: center;">
+        <thead>
+            <tr>
+                <th>Port Name</th>
+                <th>Coordinates</th>
+                <th>Spice Quantity</th>
+                <th>Production Rate</th>
+                <th>Consumption Rate</th>
+                <th>Price</th>
             </tr>
         </thead>
         <tbody>
@@ -166,6 +189,48 @@
             initializeAutocomplete();
         }
 
+        // Function to populate the ports table
+        function populatePortsTable() {
+            const portsTableBody = document.getElementById("portsTable").querySelector("tbody");
+            portsTableBody.innerHTML = ""; // Clear existing rows
+
+            portsData.forEach(port => {
+                const row = document.createElement("tr");
+
+                // Port Name
+                const nameCell = document.createElement("td");
+                nameCell.textContent = port.name;
+                row.appendChild(nameCell);
+
+                // Coordinates
+                const coordinatesCell = document.createElement("td");
+                coordinatesCell.textContent = `(${port.coordinates[0]}, ${port.coordinates[1]})`;
+                row.appendChild(coordinatesCell);
+
+                // Spice Quantity
+                const quantityCell = document.createElement("td");
+                quantityCell.textContent = port.spices ? port.spices.quantity : "N/A";
+                row.appendChild(quantityCell);
+
+                // Production Rate
+                const productionRateCell = document.createElement("td");
+                productionRateCell.textContent = port.spices ? port.spices.production_rate : "N/A";
+                row.appendChild(productionRateCell);
+
+                // Consumption Rate
+                const consumptionRateCell = document.createElement("td");
+                consumptionRateCell.textContent = port.spices ? port.spices.consumption_rate : "N/A";
+                row.appendChild(consumptionRateCell);
+
+                // Price
+                const priceCell = document.createElement("td");
+                priceCell.textContent = port.spices ? port.spices.price.toFixed(2) : "N/A";
+                row.appendChild(priceCell);
+
+                portsTableBody.appendChild(row);
+            });
+        }
+
         // Function to initialize autocomplete
         function initializeAutocomplete() {
             const autocompleteInputs = document.querySelectorAll(".autocomplete");
@@ -225,6 +290,7 @@
         // Initial draw and table population
         drawMap();
         populateBoatsTable();
+        populatePortsTable();
 
         // Add hover functionality
         canvas.addEventListener("mousemove", (event) => {
@@ -257,8 +323,13 @@
             boatGrid = data.boat_grid;
             boatsList = data.boats_list;
 
+            // Update the time display
+            const timeDisplay = document.getElementById("timeDisplay");
+            timeDisplay.textContent = `Current Time: ${data.formatted_time}`;
+
             drawMap();
             populateBoatsTable();
+            populatePortsTable(); // Update the ports table
         });
 
         // Request an initial update

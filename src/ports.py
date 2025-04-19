@@ -30,7 +30,7 @@ def update_spices(port):
 
     production_rate = spices['production_rate']
     consumption_rate = spices['consumption_rate']
-    quantity = spices['quantity'] + production_rate - consumption_rate
+    quantity = max(spices['quantity'] + production_rate - consumption_rate, 0)
     quantity_100_days = quantity + 100 * (production_rate - consumption_rate)
     price = 1000 * 1.002**(-0.05*quantity_100_days)
 

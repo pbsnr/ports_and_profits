@@ -3,6 +3,7 @@ from flask_socketio import SocketIO, emit
 from island_generator import prepare_game
 from boats import generate_boat_grid, plan_route_and_move, create_boat
 from ports import update_spices_prices_and_quantities
+from utils import format_time
 import time
 import threading
 
@@ -15,6 +16,7 @@ grid = []
 ports = []
 boat_grid = []
 boats_list = []
+hour = 1
 is_paused = False
 
 @app.route("/")
@@ -101,7 +103,7 @@ def add_boat(data):
 
 # Background task to update the map data
 def background_update_loop():
-    global grid, ports, boat_grid, boats_list, is_paused
+    global grid, ports, boat_grid, boats_list, is_paused, hour
 
     while True:
 
@@ -110,15 +112,17 @@ def background_update_loop():
         
         time.sleep(0.1)
 
-        ports = update_spices_prices_and_quantities(ports)
+        hour += 1
+        formatted_time = format_time(hour)
+        if hour % 24 == 0:
+            ports = update_spices_prices_and_quantities(ports)
 
-        print(ports)
 
         for boat in boats_list:
              boat_grid, grid, boat = plan_route_and_move(boat, ports, grid, boat_grid)
 
         # Emit the updated map to all connected clients
-        socketio.emit("update_map", {"grid": grid, "ports": ports, "boat_grid": boat_grid, "boats_list": boats_list})
+        socketio.emit("update_map", {"grid": grid, "ports": ports, "boat_grid": boat_grid, "boats_list": boats_list, "formatted_time": formatted_time})
 
 
 # Start the background thread
