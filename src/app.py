@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request, render_template, redirect, url_for
 from flask_socketio import SocketIO, emit
 from island_generator import prepare_game
 from boats import generate_boat_grid, plan_route_and_move, create_boat
+from ports import update_spices_prices_and_quantities
 import time
 import threading
 
@@ -108,6 +109,10 @@ def background_update_loop():
             continue
         
         time.sleep(0.1)
+
+        ports = update_spices_prices_and_quantities(ports)
+
+        print(ports)
 
         for boat in boats_list:
              boat_grid, grid, boat = plan_route_and_move(boat, ports, grid, boat_grid)
