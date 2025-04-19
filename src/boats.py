@@ -1,9 +1,9 @@
 from collections import deque
 
-def create_boat(name, coordinates, route, boat_grid, grid):
+def create_boat(name, coordinates, buy, sell, quantity, boat_grid, grid):
 
     if boat_grid[coordinates[0]][coordinates[1]] == 0 and grid[coordinates[0]][coordinates[1]] != 1:
-        boat = {'name': name, 'coordinates': coordinates, 'route': route, 'trace': []}
+        boat = {'name': name, 'coordinates': coordinates, 'route': [buy, sell], 'trace': [], 'quantity': quantity, 'buy': buy, 'sell': sell}
         boat_grid[coordinates[0]][coordinates[1]] = 1  # Mark the boat's position on the grid
         return boat, boat_grid
     
@@ -13,7 +13,7 @@ def generate_boat_grid(grid, ports):
     boat_grid = [[0 for _ in range(len(grid[0]))] for _ in range(len(grid))]
     boats_list = []  # List to store boat positions
 
-    boat, boat_grid = create_boat('bateau', ports[0]['coordinates'], ["Myriakon", "Thaleptra"], boat_grid, grid)
+    boat, boat_grid = create_boat('bateau', ports[0]['coordinates'], "Myriakon", "Thaleptra", 500, boat_grid, grid)
     boats_list.append(boat)  # Add the boat's position to the list
     
     return boat_grid, boats_list
@@ -60,16 +60,25 @@ def shortest_path_with_trace(grid, start, end):
 
     return None  # No path found
 
+def is_boat_at_port(boat, port):
+    return boat['coordinates'] == port['coordinates']
+
+
 def plan_route_and_move(boat, ports, grid, boat_grid):
     next_port = next((p for p in ports if p["name"] == boat['route'][1]), None)
 
-    if boat['coordinates'] == next_port['coordinates']:
+    if is_boat_at_port(boat, next_port):
+        print(f"Boat {boat['name']} has arrived at {next_port['name']}")
         first = boat['route'].pop(0)
         boat['route'].append(first)
+        if next_port['name'] == boat['buy']:
+            next_port['spices']['quantity'] -= boat['quantity'] 
+        elif next_port['name'] == boat['sell']:
+            next_port['spices']['quantity'] += boat['quantity'] 
 
     if boat['trace'] == []:
         boat['trace'] = shortest_path_with_trace(grid, boat['coordinates'], next_port['coordinates'])
 
     boat_grid, grid, boat = move_boat(boat_grid, grid, boat)
 
-    return boat_grid, grid, boat
+    return boat_grid, grid, boat, ports

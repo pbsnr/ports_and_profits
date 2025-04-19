@@ -101,6 +101,41 @@ def add_boat(data):
     else:
         print("Failed to add boat: Coordinates out of bounds.")
 
+@socketio.on("set_boat_trade")
+def set_boat_trade(data):
+    global boats_list, ports
+
+    boat_index = data.get("boatIndex")
+    quantity = data.get("quantity")
+    buyer_name = data.get("buyer")
+    seller_name = data.get("seller")
+
+    if boat_index < 0 or boat_index >= len(boats_list):
+        emit("error", {"message": "Invalid boat index."})
+        return
+
+    boat = boats_list[boat_index]
+    buyer = next((port for port in ports if port["name"] == buyer_name), None)
+    seller = next((port for port in ports if port["name"] == seller_name), None)
+
+    if not buyer or not seller:
+        emit("error", {"message": "Invalid buyer or seller."})
+        return
+
+    if seller["spices"]["quantity"] < quantity:
+        emit("error", {"message": f"Seller {seller_name} does not have enough spices."})
+        return
+
+    # Perform the trade
+    seller["spices"]["quantity"] -= quantity
+    buyer["spices"]["quantity"] += quantity
+    boat["quantity"] = quantity
+    boat["buyer"] = buyer_name
+    boat["seller"] = seller_name
+
+    # Emit the updated data to all clients
+    emit("update_map", {"grid": grid, "ports": ports, "boat_grid": boat_grid, "boats_list": boats_list}, broadcast=True)
+
 # Background task to update the map data
 def background_update_loop():
     global grid, ports, boat_grid, boats_list, is_paused, hour
@@ -119,7 +154,7 @@ def background_update_loop():
 
 
         for boat in boats_list:
-             boat_grid, grid, boat = plan_route_and_move(boat, ports, grid, boat_grid)
+             boat_grid, grid, boat, ports = plan_route_and_move(boat, ports, grid, boat_grid)
 
         # Emit the updated map to all connected clients
         socketio.emit("update_map", {"grid": grid, "ports": ports, "boat_grid": boat_grid, "boats_list": boats_list, "formatted_time": formatted_time})

@@ -46,7 +46,10 @@
                 <th>Boat Name</th>
                 <th>Current Coordinates</th>
                 <th>Route</th>
-                <th>Modify Route</th>
+                <th>Quantity</th>
+                <th>Buyer</th>
+                <th>Seller</th>
+                <th>Action</th>
             </tr>
         </thead>
         <tbody>
@@ -153,40 +156,73 @@
                 routeCell.textContent = boat.route.join(" -> ");
                 row.appendChild(routeCell);
 
-                // Modify Route
-                const modifyCell = document.createElement("td");
+                // Quantity Input
+                const quantityCell = document.createElement("td");
+                const quantityInput = document.createElement("input");
+                quantityInput.type = "number";
+                quantityInput.min = "1";
+                quantityInput.placeholder = "Enter quantity";
+                quantityInput.value = boat.quantity || ""; // Pre-fill if quantity exists
+                quantityCell.appendChild(quantityInput);
+                row.appendChild(quantityCell);
 
-                // Start Port Input
-                const startInput = document.createElement("input");
-                startInput.type = "text";
-                startInput.placeholder = "Start Port";
-                startInput.classList.add("autocomplete");
-                startInput.value = boat.route[0] || ""; // Pre-fill with the current start port
-                modifyCell.appendChild(startInput);
+                // Buyer Dropdown
+                const buyerCell = document.createElement("td");
+                const buyerDropdown = document.createElement("select");
+                portsData.forEach(port => {
+                    const option = document.createElement("option");
+                    option.value = port.name;
+                    option.textContent = port.name;
+                    if (boat.buyer === port.name) {
+                        option.selected = true; // Pre-select the current buyer
+                    }
+                    buyerDropdown.appendChild(option);
+                });
+                buyerCell.appendChild(buyerDropdown);
+                row.appendChild(buyerCell);
 
-                // End Port Input
-                const endInput = document.createElement("input");
-                endInput.type = "text";
-                endInput.placeholder = "End Port";
-                endInput.classList.add("autocomplete");
-                endInput.value = boat.route[boat.route.length - 1] || ""; // Pre-fill with the current end port
-                modifyCell.appendChild(endInput);
+                // Seller Dropdown
+                const sellerCell = document.createElement("td");
+                const sellerDropdown = document.createElement("select");
+                portsData.forEach(port => {
+                    const option = document.createElement("option");
+                    option.value = port.name;
+                    option.textContent = port.name;
+                    if (boat.seller === port.name) {
+                        option.selected = true; // Pre-select the current seller
+                    }
+                    sellerDropdown.appendChild(option);
+                });
+                sellerCell.appendChild(sellerDropdown);
+                row.appendChild(sellerCell);
 
-                // Update Button
-                const button = document.createElement("button");
-                button.textContent = "Update";
-                button.onclick = () => {
-                    const newRoute = [startInput.value, endInput.value];
-                    socket.emit("update_route", { boatIndex: index, newRoute });
+                // Action Button
+                const actionCell = document.createElement("td");
+                const actionButton = document.createElement("button");
+                actionButton.textContent = "Set Trade";
+                actionButton.onclick = () => {
+                    const quantity = parseInt(quantityInput.value, 10);
+                    const buyer = buyerDropdown.value;
+                    const seller = sellerDropdown.value;
+
+                    if (!quantity || quantity <= 0) {
+                        alert("Please enter a valid quantity.");
+                        return;
+                    }
+
+                    if (buyer === seller) {
+                        alert("Buyer and seller cannot be the same.");
+                        return;
+                    }
+
+                    // Emit the trade data to the server
+                    socket.emit("set_boat_trade", { boatIndex: index, quantity, buyer, seller });
                 };
-                modifyCell.appendChild(button);
+                actionCell.appendChild(actionButton);
+                row.appendChild(actionCell);
 
-                row.appendChild(modifyCell);
                 boatsTable.appendChild(row);
             });
-
-            // Initialize autocomplete for all inputs
-            initializeAutocomplete();
         }
 
         // Function to populate the ports table
