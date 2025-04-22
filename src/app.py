@@ -2,7 +2,7 @@ from flask import Flask, jsonify, request, render_template, redirect, url_for
 from flask_socketio import SocketIO, emit
 from island_generator import prepare_game
 from boats import generate_boat_grid, plan_route_and_move, create_boat, update_boat_route
-from ports import update_spices_prices_and_quantities
+from ports import update_spices_prices_and_quantities, get_port_at_coordinates
 from utils import format_time
 import time
 import threading
@@ -82,22 +82,26 @@ def play_loop():
 
 @socketio.on("add_boat")
 def add_boat(data):
-    global boats_list, boat_grid, grid
+    global boats_list, boat_grid, grid, money, formatted_time
 
     name = data.get("name")
     coordinates = tuple(data.get("coordinates"))
     route = data.get("route")
 
     # Validate the coordinates and ensure they are within bounds
-    if 0 <= coordinates[0] < len(grid) and 0 <= coordinates[1] < len(grid[0]):
+    if 0 <= coordinates[0] < len(grid) and 0 <= coordinates[1] < len(grid[0]) and money > 10000:
+
+        starting_port = get_port_at_coordinates(ports, coordinates)["name"]
+
         # Create the new boat
-        boat, boat_grid = create_boat(name, coordinates, "Myriakon", "Myriakon", 0, boat_grid, grid)
+        boat, boat_grid = create_boat(name, coordinates, starting_port, starting_port, 0, boat_grid, grid)
         if boat:
             boats_list.append(boat)
+            money -= 10000  # Deduct the cost of the boat
             print(f"Added new boat: {boat}")
 
             # Emit the updated map data to all clients
-            emit("update_map", {"grid": grid, "ports": ports, "boat_grid": boat_grid, "boats_list": boats_list}, broadcast=True)
+            emit("update_map", {"grid": grid, "ports": ports, "boat_grid": boat_grid, "boats_list": boats_list, "money": money, "formatted_time": format_time(hour)}, broadcast=True)
         else:
             print("Failed to add boat: Invalid position or already occupied.")
     else:
@@ -120,7 +124,7 @@ def set_boat_trade(data):
     boats_list[boat_index] = update_boat_route(boats_list[boat_index], quantity, buyer_name, seller_name)
 
     # Emit the updated data to all clients
-    emit("update_map", {"grid": grid, "ports": ports, "boat_grid": boat_grid, "boats_list": boats_list}, broadcast=True)
+    emit("update_map", {"grid": grid, "ports": ports, "boat_grid": boat_grid, "boats_list": boats_list, "money": round(money, 2), "formatted_time": format_time(hour)}, broadcast=True)
 
 # Background task to update the map data
 def background_update_loop():
@@ -137,10 +141,11 @@ def background_update_loop():
         formatted_time = format_time(hour)
         if hour % 24 == 0:
             ports = update_spices_prices_and_quantities(ports)
+            print(boats_list)
 
 
         for boat in boats_list:
-             boat_grid, grid, boat, ports, money = plan_route_and_move(boat, ports, grid, boat_grid, money)
+             boat_grid, grid, boat, ports, money = plan_route_and_move(boat, ports, grid, boat_grid, round(money, 2), hour)
 
         # Emit the updated map to all connected clients
         socketio.emit("update_map", {"grid": grid, "ports": ports, "boat_grid": boat_grid, "boats_list": boats_list, "formatted_time": formatted_time, "money": round(money, 2)})

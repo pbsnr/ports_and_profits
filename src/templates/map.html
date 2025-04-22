@@ -179,14 +179,15 @@
                             Boat Name:
                             <input type="text" id="boatName" placeholder="Enter boat name" required>
                         </label>
+                        
                         <label>
-                            Starting Coordinates (x, y):
-                            <input type="text" id="boatCoordinates" placeholder="e.g., 5,10" required>
+                            Starting Port:
+                            <select id="startingPort" required>
+                                <option value="" disabled selected>Select a port</option>
+                                <!-- Options will be dynamically populated -->
+                            </select>
                         </label>
-                        <label>
-                            Initial Route (comma-separated ports):
-                            <input type="text" id="boatRoute" placeholder="e.g., Port1,Port2" required>
-                        </label>
+
                         <button type="submit">Add Boat</button>
                     </form>
                 </div>
@@ -238,8 +239,6 @@
         let boatGrid = JSON.parse('{{ boat_grid|tojson|safe }}');  // Pass the boat grid data from Flask to JavaScript
         let boatsList = JSON.parse('{{ boats_list|tojson|safe }}');  // Pass the boats list from Flask to JavaScript
 
-        console.log('portsData:', portsData);
-
         const canvas = document.getElementById("mapCanvas");
         const ctx = canvas.getContext("2d");
         // const portInfoDiv = document.getElementById("port-info");
@@ -248,6 +247,11 @@
         const cellSize = 10; // Size of each cell in pixels
         canvas.width = gridData[0].length * cellSize;
         canvas.height = gridData.length * cellSize;
+
+        let isPaused = false; // Tracks whether the simulation is paused
+
+        // Disable inputs by default
+        toggleBoatInputs(false);
 
         // Function to draw the map
         function drawMap() {
@@ -317,7 +321,7 @@
                     const option = document.createElement("option");
                     option.value = port.name;
                     option.textContent = port.name;
-                    if (boat.buyer === port.name) {
+                    if (boat.buy === port.name) {
                         option.selected = true; // Pre-select the current buyer
                     }
                     buyerDropdown.appendChild(option);
@@ -332,7 +336,7 @@
                     const option = document.createElement("option");
                     option.value = port.name;
                     option.textContent = port.name;
-                    if (boat.seller === port.name) {
+                    if (boat.sell === port.name) {
                         option.selected = true; // Pre-select the current seller
                     }
                     sellerDropdown.appendChild(option);
@@ -367,6 +371,9 @@
 
                 boatsTable.appendChild(row);
             });
+
+            // Reapply the toggleBoatInputs logic after refreshing the table
+            toggleBoatInputs(isPaused);
         }
 
         // Function to populate the ports table
@@ -411,6 +418,22 @@
             });
         }
 
+        // Populate the starting port dropdown
+        function populateStartingPortDropdown() {
+            const startingPortDropdown = document.getElementById("startingPort");
+            startingPortDropdown.innerHTML = '<option value="" disabled selected>Select a port</option>'; // Reset options
+
+            portsData.forEach(port => {
+                const option = document.createElement("option");
+                option.value = JSON.stringify(port.coordinates); // Store coordinates as the value
+                option.textContent = port.name; // Display the port name
+                startingPortDropdown.appendChild(option);
+            });
+        }
+
+        // Call the function to populate the dropdown
+        populateStartingPortDropdown();
+
         // Initial draw and table population
         drawMap();
         populateBoatsTable();
@@ -454,7 +477,6 @@
             if (gridY >= 0 && gridY < gridData.length && gridX >= 0 && gridX < gridData[0].length) {
                 if (gridData[gridY][gridX] === 2) {
                     // Find the corresponding port information
-                    console.log('gridX:', gridX, 'gridY:', gridY);
                     const port = portsData.find(p => p['coordinates'][1] === gridX && p['coordinates'][0] === gridY);
                     if (port) {
                         tooltip.style.display = "block";
@@ -508,11 +530,15 @@
         // Pause button functionality
         document.getElementById("pauseButton").addEventListener("click", () => {
             socket.emit("pause_loop");
+            isPaused = true; // Set the state to paused
+            toggleBoatInputs(true); // Enable inputs when paused
         });
 
         // Play button functionality
         document.getElementById("playButton").addEventListener("click", () => {
             socket.emit("play_loop");
+            isPaused = false; // Set the state to running
+            toggleBoatInputs(false); // Disable inputs when running
         });
 
         // Handle adding a new boat
@@ -520,21 +546,32 @@
             event.preventDefault(); // Prevent form submission
 
             const boatName = document.getElementById("boatName").value.trim();
-            const boatCoordinates = document.getElementById("boatCoordinates").value.trim();
-            const boatRoute = document.getElementById("boatRoute").value.trim();
+            const startingPort = document.getElementById("startingPort").value;
 
-            // Parse coordinates and route
-            const coordinates = boatCoordinates.split(",").map(Number);
-            const route = boatRoute.split(",").map(r => r.trim());
+            if (!startingPort) {
+                alert("Please select a starting port.");
+                return;
+            }
+
+            const coordinates = JSON.parse(startingPort); // Parse the coordinates from the dropdown value
 
             // Emit the new boat data to the server
-            socket.emit("add_boat", { name: boatName, coordinates, route });
+            socket.emit("add_boat", { name: boatName, coordinates });
 
             // Clear the form
             document.getElementById("boatName").value = "";
-            document.getElementById("boatCoordinates").value = "";
-            document.getElementById("boatRoute").value = "";
+            document.getElementById("startingPort").value = "";
+            drawMap();
         });
+
+        function toggleBoatInputs(isPaused) {
+            const boatInputs = document.querySelectorAll("#boatsTable input, #boatsTable select, #boatsTable button, #addBoatForm input, #addBoatForm select, #addBoatForm button");
+            boatInputs.forEach(input => {
+                input.disabled = !isPaused; // Enable inputs if paused, disable otherwise
+            });
+        }
+
+
     </script>
 </body>
 </html>

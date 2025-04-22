@@ -53,3 +53,10 @@ def update_spices_prices_and_quantities(ports):
             port['spices'] = update_spices(port)
         
     return ports
+
+
+def get_port_at_coordinates(ports, coordinates):
+    for port in ports:
+        if port['coordinates'] == coordinates:
+            return port
+    return None

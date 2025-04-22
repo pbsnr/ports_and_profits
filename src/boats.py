@@ -4,7 +4,7 @@ from trade import trade
 def create_boat(name, coordinates, buy, sell, quantity, boat_grid, grid):
 
     if boat_grid[coordinates[0]][coordinates[1]] == 0 and grid[coordinates[0]][coordinates[1]] != 1:
-        boat = {'name': name, 'coordinates': coordinates, 'route': [buy, sell], 'trace': [], 'quantity': quantity, 'buy': buy, 'sell': sell, 'cargo_size': 50, 'cargo_used': 0}
+        boat = {'name': name, 'coordinates': coordinates, 'route': [buy, sell], 'trace': [], 'quantity': quantity, 'buy': buy, 'sell': sell, 'cargo_size': 50, 'cargo_used': 0, "accounting_history": []}
         boat_grid[coordinates[0]][coordinates[1]] = 1  # Mark the boat's position on the grid
         return boat, boat_grid
     
@@ -14,7 +14,7 @@ def generate_boat_grid(grid, ports):
     boat_grid = [[0 for _ in range(len(grid[0]))] for _ in range(len(grid))]
     boats_list = []  # List to store boat positions
 
-    boat, boat_grid = create_boat('bateau', ports[0]['coordinates'], "Myriakon", "Thaleptra", 0, boat_grid, grid)
+    boat, boat_grid = create_boat('bateau', ports[0]['coordinates'], "Myriakon", "Myriakon", 0, boat_grid, grid)
     boats_list.append(boat)  # Add the boat's position to the list
     
     return boat_grid, boats_list
@@ -74,7 +74,7 @@ def update_boat_route(boat, quantity, buyer_name, seller_name):
     return boat
 
 
-def plan_route_and_move(boat, ports, grid, boat_grid, money):
+def plan_route_and_move(boat, ports, grid, boat_grid, money, hour):
     next_port = next((p for p in ports if p["name"] == boat['route'][1]), None)
 
     if is_boat_at_port(boat, next_port):
@@ -83,7 +83,7 @@ def plan_route_and_move(boat, ports, grid, boat_grid, money):
         first = boat['route'].pop(0)
         boat['route'].append(first)
 
-        boat, next_port, money = trade(boat, next_port, money)
+        boat, next_port, money = trade(boat, next_port, money, hour)
 
     if boat['trace'] == []:
         boat['trace'] = shortest_path_with_trace(grid, boat['coordinates'], next_port['coordinates'])
