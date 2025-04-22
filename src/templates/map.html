@@ -7,87 +7,231 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            text-align: center;
-            margin: 20px;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
         }
-        canvas {
-            border: 1px solid #000;
+
+        #header {
+            height: 50px;
+            display: flex; /* Use Flexbox for horizontal alignment */
+            align-items: center; /* Vertically center the content */
+            justify-content: space-between; /* Distribute items with space between them */
+            padding: 0 20px; /* Add padding for spacing */
+            background-color: #f4f4f4; /* Optional: Add a background color */
+            border-bottom: 1px solid #ccc; /* Optional: Add a bottom border */
         }
-        #port-info {
-            margin-top: 20px;
+
+        #mainContainer {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        #leftContainer {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border-right: 1px solid #ccc;
+            overflow-y: auto;
+        }
+
+        #rightContainer {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        #tabs {
+            display: flex;
+            border-bottom: 1px solid #ccc;
+        }
+
+        #tabs button {
+            flex: 1;
+            padding: 10px;
+            cursor: pointer;
+            background-color: #f4f4f4;
+            border: none;
+            border-bottom: 2px solid transparent;
             font-size: 16px;
-            color: #333;
+        }
+
+        #tabs button.active {
+            border-bottom: 2px solid #007BFF;
+            background-color: #fff;
+        }
+
+        .tab-content {
+            display: none;
+            flex: 1;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        table th, table td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: center;
+        }
+
+        table th {
+            background-color: #f4f4f4;
+        }
+
+        #controls {
+            display: flex;
+            gap: 10px; /* Add spacing between buttons */
+        }
+
+        #timeDisplay, #moneyDisplay {
+            margin: 10px 0;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        #tooltip {
+            position: absolute;
+            display: none;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            padding: 5px;
+            border-radius: 5px;
+            font-size: 14px;
+            pointer-events: none;
+            z-index: 1000;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
     </style>
     <!-- Include the Socket.IO client library -->
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
 </head>
 <body>
-    <h1>Generated Map</h1>
-    <canvas id="mapCanvas"></canvas>
-    <div id="port-info">Hover over a port to see its information.</div>
-
-    <!-- Pause and Play Buttons -->
-    <div style="margin: 20px;">
-        <button id="pauseButton">Pause</button>
-        <button id="playButton">Play</button>
+    <div id="header">
+        <h1 style="margin: 0;">Map of Spice Trade</h1>
+        <div id="controls">
+            <button id="pauseButton">Pause</button>
+            <button id="playButton">Play</button>
+        </div>
+        <div>
+            <div id="timeDisplay">Current Time: 00:00</div>
+            <div id="moneyDisplay">Money: D100000</div>
+        </div>
     </div>
 
-    <!-- Time Display -->
-    <div id="timeDisplay" style="margin: 20px; font-size: 18px; font-weight: bold;">
-        Current Time: 00:00
+    <!-- <div id="port-info">Hover over a port to see its information.</div> -->
+
+    <div id="mainContainer">
+        <!-- Left Container -->
+
+        <div id="leftContainer">
+            <canvas id="mapCanvas"></canvas>
+        </div>
+
+        <!-- Right Container -->
+        <div id="rightContainer">
+            <!-- Tabs -->
+            <div id="tabs">
+                <button class="tab-button active" data-tab="boatsTab">Boats</button>
+                <button class="tab-button" data-tab="portsTab">Ports</button>
+            </div>
+
+            <!-- Tab Content -->
+            <div id="boatsTab" class="tab-content active">
+                <h2>Boats Information</h2>
+                <table id="boatsTable" border="1">
+                    <thead>
+                        <tr>
+                            <th>Boat Name</th>
+                            <th>Current Coordinates</th>
+                            <th>Route</th>
+                            <th>Quantity</th>
+                            <th>Buyer</th>
+                            <th>Seller</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Rows will be dynamically populated -->
+                    </tbody>
+                </table>
+
+                <!-- Add Boat Section -->
+                <div id="addBoatSection" style="margin-top: 20px;">
+                    <h2>Add a New Boat</h2>
+                    <form id="addBoatForm" style="display: flex; flex-direction: column; gap: 10px;">
+                        <label>
+                            Boat Name:
+                            <input type="text" id="boatName" placeholder="Enter boat name" required>
+                        </label>
+                        <label>
+                            Starting Coordinates (x, y):
+                            <input type="text" id="boatCoordinates" placeholder="e.g., 5,10" required>
+                        </label>
+                        <label>
+                            Initial Route (comma-separated ports):
+                            <input type="text" id="boatRoute" placeholder="e.g., Port1,Port2" required>
+                        </label>
+                        <button type="submit">Add Boat</button>
+                    </form>
+                </div>
+            </div>
+
+            <div id="portsTab" class="tab-content">
+                <h2>Ports Information</h2>
+                <table id="portsTable" border="1">
+                    <thead>
+                        <tr>
+                            <th>Port Name</th>
+                            <th>Coordinates</th>
+                            <th>Spice Quantity</th>
+                            <th>Production Rate</th>
+                            <th>Consumption Rate</th>
+                            <th>Price</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Rows will be dynamically populated -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
-    <!-- Table for boat information -->
-    <h2>Boats Information</h2>
-    <table id="boatsTable" border="1" style="margin: 20px auto; width: 80%; text-align: center;">
-        <thead>
-            <tr>
-                <th>Boat Name</th>
-                <th>Current Coordinates</th>
-                <th>Route</th>
-                <th>Quantity</th>
-                <th>Buyer</th>
-                <th>Seller</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            <!-- Rows will be dynamically populated -->
-        </tbody>
-    </table>
-
-    <!-- Table for port information -->
-    <h2>Ports Information</h2>
-    <table id="portsTable" border="1" style="margin: 20px auto; width: 80%; text-align: center;">
-        <thead>
-            <tr>
-                <th>Port Name</th>
-                <th>Coordinates</th>
-                <th>Spice Quantity</th>
-                <th>Production Rate</th>
-                <th>Consumption Rate</th>
-                <th>Price</th>
-            </tr>
-        </thead>
-        <tbody>
-            <!-- Rows will be dynamically populated -->
-        </tbody>
-    </table>
-
-    <!-- Form for adding a new boat -->
-    <h2>Add a New Boat</h2>
-    <form id="addBoatForm" style="margin: 20px auto; width: 80%; text-align: center;">
-        <label for="boatName">Boat Name:</label>
-        <input type="text" id="boatName" placeholder="Enter boat name" required>
-        <label for="boatCoordinates">Coordinates:</label>
-        <input type="text" id="boatCoordinates" placeholder="e.g., 5,10" required>
-        <label for="boatRoute">Route:</label>
-        <input type="text" id="boatRoute" placeholder="Comma-separated ports" required>
-        <button type="submit">Add Boat</button>
-    </form>
+    <div id="tooltip" style="position: absolute; display: none; background-color: #fff; border: 1px solid #ccc; padding: 5px; border-radius: 5px; font-size: 14px; pointer-events: none; z-index: 1000;"></div>
 
     <script>
+        // Tab switching logic
+        const tabButtons = document.querySelectorAll(".tab-button");
+        const tabContents = document.querySelectorAll(".tab-content");
+
+        tabButtons.forEach(button => {
+            button.addEventListener("click", () => {
+                // Remove active class from all buttons and contents
+                tabButtons.forEach(btn => btn.classList.remove("active"));
+                tabContents.forEach(content => content.classList.remove("active"));
+
+                // Add active class to the clicked button and corresponding content
+                button.classList.add("active");
+                document.getElementById(button.dataset.tab).classList.add("active");
+            });
+        });
+
         const socket = io();  // Initialize WebSocket connection
         let gridData = JSON.parse('{{ grid|tojson|safe }}');  // Pass the grid data from Flask to JavaScript
         let portsData = JSON.parse('{{ ports|tojson|safe }}');  // Pass the ports data from Flask to JavaScript
@@ -98,7 +242,7 @@
 
         const canvas = document.getElementById("mapCanvas");
         const ctx = canvas.getContext("2d");
-        const portInfoDiv = document.getElementById("port-info");
+        // const portInfoDiv = document.getElementById("port-info");
         const boatsTable = document.getElementById("boatsTable").querySelector("tbody");
 
         const cellSize = 10; // Size of each cell in pixels
@@ -267,62 +411,6 @@
             });
         }
 
-        // Function to initialize autocomplete
-        function initializeAutocomplete() {
-            const autocompleteInputs = document.querySelectorAll(".autocomplete");
-
-            autocompleteInputs.forEach(input => {
-                input.addEventListener("input", function () {
-                    const suggestions = portsData
-                        .map(port => port.name)
-                        .filter(name => name.toLowerCase().includes(this.value.toLowerCase()));
-
-                    // Remove any existing suggestion list
-                    let suggestionList = this.nextElementSibling;
-                    if (suggestionList && suggestionList.classList.contains("suggestions")) {
-                        suggestionList.remove();
-                    }
-
-                    // Create a new suggestion list
-                    suggestionList = document.createElement("ul");
-                    suggestionList.classList.add("suggestions");
-                    suggestionList.style.position = "absolute";
-                    suggestionList.style.backgroundColor = "white";
-                    suggestionList.style.border = "1px solid #ccc";
-                    suggestionList.style.listStyle = "none";
-                    suggestionList.style.padding = "0";
-                    suggestionList.style.margin = "0";
-                    suggestionList.style.zIndex = "1000";
-
-                    suggestions.forEach(suggestion => {
-                        const item = document.createElement("li");
-                        item.textContent = suggestion;
-                        item.style.padding = "5px";
-                        item.style.cursor = "pointer";
-
-                        item.addEventListener("click", () => {
-                            input.value = suggestion;
-                            suggestionList.remove();
-                        });
-
-                        suggestionList.appendChild(item);
-                    });
-
-                    this.parentNode.appendChild(suggestionList);
-                });
-
-                // Remove suggestions when the input loses focus
-                input.addEventListener("blur", function () {
-                    setTimeout(() => {
-                        const suggestionList = this.nextElementSibling;
-                        if (suggestionList && suggestionList.classList.contains("suggestions")) {
-                            suggestionList.remove();
-                        }
-                    }, 200);
-                });
-            });
-        }
-
         // Initial draw and table population
         drawMap();
         populateBoatsTable();
@@ -352,6 +440,48 @@
             }
         });
 
+        const tooltip = document.getElementById("tooltip");
+
+        canvas.addEventListener("mousemove", (event) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = event.clientX - rect.left;
+            const mouseY = event.clientY - rect.top;
+
+            const gridX = Math.floor(mouseX / cellSize);
+            const gridY = Math.floor(mouseY / cellSize);
+
+            // Check if the hovered cell is a port
+            if (gridY >= 0 && gridY < gridData.length && gridX >= 0 && gridX < gridData[0].length) {
+                if (gridData[gridY][gridX] === 2) {
+                    // Find the corresponding port information
+                    console.log('gridX:', gridX, 'gridY:', gridY);
+                    const port = portsData.find(p => p['coordinates'][1] === gridX && p['coordinates'][0] === gridY);
+                    if (port) {
+                        tooltip.style.display = "block";
+                        tooltip.style.left = `${event.clientX + 10}px`; // Position tooltip slightly to the right of the cursor
+                        tooltip.style.top = `${event.clientY + 10}px`; // Position tooltip slightly below the cursor
+                        tooltip.innerHTML = `
+                            <strong>Port Name:</strong> ${port.name}<br>
+                            <strong>Coordinates:</strong> (${port.coordinates[0]}, ${port.coordinates[1]})<br>
+                            <strong>Spice Quantity:</strong> ${port.spices.quantity}<br>
+                            <strong>Production Rate:</strong> ${port.spices.production_rate}<br>
+                            <strong>Consumption Rate:</strong> ${port.spices.consumption_rate}<br>
+                            <strong>Price:</strong> ${port.spices.price.toFixed(2)}
+                        `;
+                    }
+                } else {
+                    tooltip.style.display = "none";
+                }
+            } else {
+                tooltip.style.display = "none";
+            }
+        });
+
+        // Hide the tooltip when the mouse leaves the canvas
+        canvas.addEventListener("mouseleave", () => {
+            tooltip.style.display = "none";
+        });
+
         // Listen for map updates from the server
         socket.on("update_map", (data) => {
             gridData = data.grid;
@@ -362,6 +492,10 @@
             // Update the time display
             const timeDisplay = document.getElementById("timeDisplay");
             timeDisplay.textContent = `Current Time: ${data.formatted_time}`;
+
+            const moneyDisplay = document.getElementById("moneyDisplay");
+            moneyDisplay.textContent = `Money: ${data.money}`;
+
 
             drawMap();
             populateBoatsTable();

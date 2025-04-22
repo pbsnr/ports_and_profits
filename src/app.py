@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request, render_template, redirect, url_for
 from flask_socketio import SocketIO, emit
 from island_generator import prepare_game
-from boats import generate_boat_grid, plan_route_and_move, create_boat
+from boats import generate_boat_grid, plan_route_and_move, create_boat, update_boat_route
 from ports import update_spices_prices_and_quantities
 from utils import format_time
 import time
@@ -16,6 +16,7 @@ grid = []
 ports = []
 boat_grid = []
 boats_list = []
+money = 100000
 hour = 1
 is_paused = False
 
@@ -35,6 +36,7 @@ def generate():
     num_ports = int(request.form.get("num_ports", 2))  # New parameter for ports
 
     grid, ports = prepare_game(width, height, num_islands, island_size, num_ports)
+    ports = update_spices_prices_and_quantities(ports)
 
     boat_grid, boats_list = generate_boat_grid(grid, ports)  
 
@@ -89,7 +91,7 @@ def add_boat(data):
     # Validate the coordinates and ensure they are within bounds
     if 0 <= coordinates[0] < len(grid) and 0 <= coordinates[1] < len(grid[0]):
         # Create the new boat
-        boat, boat_grid = create_boat(name, coordinates, route, boat_grid, grid)
+        boat, boat_grid = create_boat(name, coordinates, "Myriakon", "Myriakon", 0, boat_grid, grid)
         if boat:
             boats_list.append(boat)
             print(f"Added new boat: {boat}")
@@ -109,36 +111,20 @@ def set_boat_trade(data):
     quantity = data.get("quantity")
     buyer_name = data.get("buyer")
     seller_name = data.get("seller")
+    print(f"Boat index: {boat_index}, Quantity: {quantity}, Buyer: {buyer_name}, Seller: {seller_name}")
 
     if boat_index < 0 or boat_index >= len(boats_list):
         emit("error", {"message": "Invalid boat index."})
         return
 
-    boat = boats_list[boat_index]
-    buyer = next((port for port in ports if port["name"] == buyer_name), None)
-    seller = next((port for port in ports if port["name"] == seller_name), None)
-
-    if not buyer or not seller:
-        emit("error", {"message": "Invalid buyer or seller."})
-        return
-
-    if seller["spices"]["quantity"] < quantity:
-        emit("error", {"message": f"Seller {seller_name} does not have enough spices."})
-        return
-
-    # Perform the trade
-    seller["spices"]["quantity"] -= quantity
-    buyer["spices"]["quantity"] += quantity
-    boat["quantity"] = quantity
-    boat["buyer"] = buyer_name
-    boat["seller"] = seller_name
+    boats_list[boat_index] = update_boat_route(boats_list[boat_index], quantity, buyer_name, seller_name)
 
     # Emit the updated data to all clients
     emit("update_map", {"grid": grid, "ports": ports, "boat_grid": boat_grid, "boats_list": boats_list}, broadcast=True)
 
 # Background task to update the map data
 def background_update_loop():
-    global grid, ports, boat_grid, boats_list, is_paused, hour
+    global grid, ports, boat_grid, boats_list, is_paused, hour, money
 
     while True:
 
@@ -154,10 +140,10 @@ def background_update_loop():
 
 
         for boat in boats_list:
-             boat_grid, grid, boat, ports = plan_route_and_move(boat, ports, grid, boat_grid)
+             boat_grid, grid, boat, ports, money = plan_route_and_move(boat, ports, grid, boat_grid, money)
 
         # Emit the updated map to all connected clients
-        socketio.emit("update_map", {"grid": grid, "ports": ports, "boat_grid": boat_grid, "boats_list": boats_list, "formatted_time": formatted_time})
+        socketio.emit("update_map", {"grid": grid, "ports": ports, "boat_grid": boat_grid, "boats_list": boats_list, "formatted_time": formatted_time, "money": round(money, 2)})
 
 
 # Start the background thread

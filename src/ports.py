@@ -2,9 +2,9 @@ import random
 
 
 def initialise_spices(port):
-    quantity = random.randint(3000, 10000)
+    quantity = random.randint(300, 600)
     production_rate = random.randint(1, 100)
-    consumption_rate =  random.randint(1, 100)
+    consumption_rate =  max(0, production_rate + random.randint(-5, 5))
     quantity_100_days = quantity + 100 * (production_rate - consumption_rate)
     price = 1000 * 1.002**(-0.05*quantity_100_days)
 
