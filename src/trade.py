@@ -7,8 +7,6 @@ def update_boat_accounting(boat, hour):
 
     day = hour // 24
 
-    print(f"Boat {boat['name']} accounting: {boat['accounting_history']}")
-
     boat['accounting_formatted'].append([day, boat['accounting_formatted'][-1][1] + sum(boat["accounting_history"])])
     boat['accounting_formatted'] = boat['accounting_formatted'][-50:]
     boat["accounting_history"] = []

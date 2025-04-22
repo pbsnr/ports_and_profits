@@ -99,6 +99,11 @@
             gap: 10px; /* Add spacing between buttons */
         }
 
+        #infos {
+            width: 30vw;
+            text-align: end;
+        }
+
         #timeDisplay, #moneyDisplay {
             margin: 10px 0;
             font-size: 16px;
@@ -124,12 +129,12 @@
 </head>
 <body>
     <div id="header">
-        <h1 style="margin: 0;">Map of Spice Trade</h1>
+        <h1 style="margin: 0; width: 30vw;">Map of Spice Trade</h1>
         <div id="controls">
             <button id="pauseButton">Pause</button>
             <button id="playButton">Play</button>
         </div>
-        <div>
+        <div id="infos">
             <div id="timeDisplay">Current Time: 00:00</div>
             <div id="moneyDisplay">Money: D100000</div>
         </div>
@@ -384,6 +389,10 @@
 
                 // Render the chart for this boat
                 renderAccountingChart(chartCanvas.id, boat.accounting_formatted);
+
+                // Add event listeners for highlighting the boat on the map
+                row.addEventListener("mouseover", () => highlightOnMap(boat.coordinates, "yellow"));
+                row.addEventListener("mouseout", () => drawMap()); // Redraw the map to remove the highlight
             });
 
             // Reapply the toggleBoatInputs logic after refreshing the table
@@ -477,6 +486,10 @@
                 const priceCell = document.createElement("td");
                 priceCell.textContent = port.spices ? port.spices.price.toFixed(2) : "N/A";
                 row.appendChild(priceCell);
+
+                // Add event listeners for highlighting the port on the map
+                row.addEventListener("mouseover", () => highlightOnMap(port.coordinates, "white"));
+                row.addEventListener("mouseout", () => drawMap()); // Redraw the map to remove the highlight
 
                 portsTableBody.appendChild(row);
             });
@@ -635,6 +648,40 @@
             });
         }
 
+        function highlightOnMap(coordinates, color) {
+            const [y, x] = coordinates;
+
+            // Redraw the map first
+            drawMap();
+
+            // Highlight the specific position with a stroked (outlined) circle
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2; // Thickness of the circle border
+            ctx.beginPath();
+            ctx.arc(
+                x * cellSize + cellSize / 2,
+                y * cellSize + cellSize / 2,
+                cellSize * 0.75, // Bigger circle (you can tweak this)
+                0,
+                2 * Math.PI
+            );
+            ctx.stroke();
+        }
+
+        // Highlight the boat on the map when hovering over the table
+        boatsTable.addEventListener("mouseover", (event) => {
+            const target = event.target.closest("tr");
+            if (target) {
+                const rowIndex = Array.from(boatsTable.children).indexOf(target);
+                const boat = boatsList[rowIndex];
+                highlightOnMap(boat.coordinates, "white");
+            }
+        });
+
+        // Remove highlight when mouse leaves the table
+        boatsTable.addEventListener("mouseout", () => {
+            drawMap(); // Redraw the map to remove highlights
+        });
 
     </script>
 </body>
