@@ -1,10 +1,10 @@
 from collections import deque
-from trade import trade
+from trade import trade, update_boat_accounting
 
 def create_boat(name, coordinates, buy, sell, quantity, boat_grid, grid):
 
     if boat_grid[coordinates[0]][coordinates[1]] == 0 and grid[coordinates[0]][coordinates[1]] != 1:
-        boat = {'name': name, 'coordinates': coordinates, 'route': [buy, sell], 'trace': [], 'quantity': quantity, 'buy': buy, 'sell': sell, 'cargo_size': 50, 'cargo_used': 0, "accounting_history": []}
+        boat = {'name': name, 'coordinates': coordinates, 'route': [buy, sell], 'trace': [], 'quantity': quantity, 'buy': buy, 'sell': sell, 'cargo_size': 50, 'cargo_used': 0, "accounting_history": [], "accounting_formatted": [[0, 0]]}
         boat_grid[coordinates[0]][coordinates[1]] = 1  # Mark the boat's position on the grid
         return boat, boat_grid
     
@@ -72,6 +72,12 @@ def update_boat_route(boat, quantity, buyer_name, seller_name):
     boat['trace'] = []  # Reset the trace when the route is updated
 
     return boat
+
+def update_boats_accounting(boats_list, hour):
+    for boat in boats_list:
+        boat = update_boat_accounting(boat, hour)
+
+    return boats_list
 
 
 def plan_route_and_move(boat, ports, grid, boat_grid, money, hour):

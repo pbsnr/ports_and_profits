@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request, render_template, redirect, url_for
 from flask_socketio import SocketIO, emit
 from island_generator import prepare_game
-from boats import generate_boat_grid, plan_route_and_move, create_boat, update_boat_route
+from boats import generate_boat_grid, plan_route_and_move, create_boat, update_boat_route, update_boats_accounting
 from ports import update_spices_prices_and_quantities, get_port_at_coordinates
 from utils import format_time
 import time
@@ -115,7 +115,6 @@ def set_boat_trade(data):
     quantity = data.get("quantity")
     buyer_name = data.get("buyer")
     seller_name = data.get("seller")
-    print(f"Boat index: {boat_index}, Quantity: {quantity}, Buyer: {buyer_name}, Seller: {seller_name}")
 
     if boat_index < 0 or boat_index >= len(boats_list):
         emit("error", {"message": "Invalid boat index."})
@@ -141,7 +140,7 @@ def background_update_loop():
         formatted_time = format_time(hour)
         if hour % 24 == 0:
             ports = update_spices_prices_and_quantities(ports)
-            print(boats_list)
+            boats_list = update_boats_accounting(boats_list, hour)
 
 
         for boat in boats_list:

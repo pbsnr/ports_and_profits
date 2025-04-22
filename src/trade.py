@@ -1,3 +1,21 @@
+def log_day_accounting(boat, trade_money):
+    boat["accounting_history"].append(trade_money)
+
+    return boat
+
+def update_boat_accounting(boat, hour):
+
+    day = hour // 24
+
+    print(f"Boat {boat['name']} accounting: {boat['accounting_history']}")
+
+    boat['accounting_formatted'].append([day, boat['accounting_formatted'][-1][1] + sum(boat["accounting_history"])])
+    boat['accounting_formatted'] = boat['accounting_formatted'][-50:]
+    boat["accounting_history"] = []
+    return boat
+
+
+
 def buy(port, boat, money, hour):
     enough_spices = port['spices']['quantity'] >= boat['quantity']
     can_afford = boat['quantity'] * port['spices']['price'] <= money
@@ -8,9 +26,7 @@ def buy(port, boat, money, hour):
         port['spices']['quantity'] -= boat['quantity']
         boat['cargo_used'] += boat['quantity']
         money -= boat['quantity'] * port['spices']['price']
-        print([hour, -boat['cargo_used'] * port['spices']['price']])
-        boat["accounting_history"].append([hour, (boat['cargo_used'] * port['spices']['price'])*-1])
-        boat["accounting_history"] = boat["accounting_history"][-100:]
+        log_day_accounting(boat, -boat['cargo_used'] * port['spices']['price'])
 
         
     else:
@@ -21,22 +37,16 @@ def buy(port, boat, money, hour):
 def sell(port, boat, money, hour):
     port['spices']['quantity'] += boat['cargo_used']
     money += boat['cargo_used'] * port['spices']['price']
-    print([hour, boat['cargo_used'] * port['spices']['price']])
-    boat["accounting_history"].append([hour, boat['cargo_used'] * port['spices']['price']])
-    boat["accounting_history"] = boat["accounting_history"][-100:]
-    boat['cargo_used'] = 0
+    log_day_accounting(boat, boat['cargo_used'] * port['spices']['price'])
+    boat['cargo_used'] -= boat['quantity']
 
     return port, boat, money
     
 
 def trade(boat, port, money, hour):
     if boat['buy'] == port['name']:
-        print(f"Boat {boat['name']} is buying from {port['name']}")
         port, boat, money = buy(port, boat, money, hour)
     elif boat['sell'] == port['name']:
-        print(f"Boat {boat['name']} is selling to {port['name']}")
         port, boat, money = sell(port, boat, money, hour)
-    else:
-        print(f"Boat {boat['name']} is not trading at {port['name']}")
 
     return boat, port, money
