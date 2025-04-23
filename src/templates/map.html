@@ -205,12 +205,12 @@
                 <table id="portsTable" border="1">
                     <thead>
                         <tr>
-                            <th>Port Name</th>
-                            <th>Coordinates</th>
-                            <th>Spice Quantity</th>
-                            <th>Production Rate</th>
-                            <th>Consumption Rate</th>
-                            <th>Price</th>
+                            <th data-column="name" data-order="asc">Port Name</th>
+                            <th data-column="coordinates" data-order="asc">Coordinates</th>
+                            <th data-column="spices.quantity" data-order="asc">Spice Quantity</th>
+                            <th data-column="spices.production_rate" data-order="asc">Production Rate</th>
+                            <th data-column="spices.consumption_rate" data-order="asc">Consumption Rate</th>
+                            <th data-column="spices.price" data-order="asc">Price</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -245,6 +245,8 @@
         let portsData = JSON.parse('{{ ports|tojson|safe }}');  // Pass the ports data from Flask to JavaScript
         let boatGrid = JSON.parse('{{ boat_grid|tojson|safe }}');  // Pass the boat grid data from Flask to JavaScript
         let boatsList = JSON.parse('{{ boats_list|tojson|safe }}');  // Pass the boats list from Flask to JavaScript
+
+        let currentSort = { column: "Port Name", order: "asc" }; // Default sorting state
 
         const canvas = document.getElementById("mapCanvas");
         const ctx = canvas.getContext("2d");
@@ -451,6 +453,8 @@
 
         // Function to populate the ports table
         function populatePortsTable() {
+
+
             const portsTableBody = document.getElementById("portsTable").querySelector("tbody");
             portsTableBody.innerHTML = ""; // Clear existing rows
 
@@ -514,7 +518,8 @@
         // Initial draw and table population
         drawMap();
         populateBoatsTable();
-        populatePortsTable();
+        sortPortsTable(currentSort.column, currentSort.order);
+        // populatePortsTable();
 
         // Add hover functionality
         canvas.addEventListener("mousemove", (event) => {
@@ -598,7 +603,8 @@
 
             drawMap();
             populateBoatsTable();
-            populatePortsTable(); // Update the ports table
+            sortPortsTable(currentSort.column, currentSort.order);
+            // populatePortsTable(); // Update the ports table
         });
 
         // Request an initial update
@@ -681,6 +687,49 @@
         // Remove highlight when mouse leaves the table
         boatsTable.addEventListener("mouseout", () => {
             drawMap(); // Redraw the map to remove highlights
+        });
+
+        function sortPortsTable(column, order) {
+            currentSort = { column, order }; // Update the global sorting state
+
+            portsData.sort((a, b) => {
+                const keys = column.split(".");
+                let valA = a, valB = b;
+
+                // Navigate through nested keys (e.g., "spices.quantity")
+                keys.forEach(key => {
+                    valA = valA[key];
+                    valB = valB[key];
+                });
+
+                if (typeof valA === "string") {
+                    valA = valA.toLowerCase();
+                    valB = valB.toLowerCase();
+                }
+
+                if (order === "asc") {
+                    return valA > valB ? 1 : valA < valB ? -1 : 0;
+                } else {
+                    return valA < valB ? 1 : valA > valB ? -1 : 0;
+                }
+            });
+
+            // Re-render the table after sorting
+            populatePortsTable();
+        }
+
+        document.querySelectorAll("#portsTable th").forEach(header => {
+            header.addEventListener("click", () => {
+                const column = header.dataset.column;
+                const currentOrder = header.dataset.order;
+                const newOrder = currentOrder === "asc" ? "desc" : "asc";
+
+                // Update the order attribute
+                header.dataset.order = newOrder;
+
+                // Sort the table
+                sortPortsTable(column, newOrder);
+            });
         });
 
     </script>
